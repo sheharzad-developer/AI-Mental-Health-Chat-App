@@ -10,13 +10,17 @@ export default async function CommunityPage() {
   const session = await auth();
   const email = session?.user?.email ?? "";
 
-  const { data, error } = await supabaseAdmin()
-    .from("messages")
-    .select("*")
-    .order("created_at", { ascending: true })
-    .limit(100);
-
-  const initialMessages: Message[] = error ? [] : (data as Message[]) ?? [];
+  let initialMessages: Message[] = [];
+  try {
+    const { data } = await supabaseAdmin()
+      .from("messages")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(100);
+    initialMessages = (data as Message[]) ?? [];
+  } catch {
+    // Supabase env vars not set yet — render the room empty so the page still works.
+  }
 
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-gradient-to-br from-[#e5f0eb] via-[#eef3f0] to-[#e8e6f2] dark:from-[#080a09] dark:via-[#0d1210] dark:to-[#0a0c14]">

@@ -1,20 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-// Browser-safe client (anon key) — used for the realtime subscription.
-export const supabaseBrowser = createClient(url, anonKey, {
-  auth: { persistSession: false },
-});
-
-// Server-only client (service role) — used to insert messages on behalf of the signed-in user.
-// NEVER import this from client components.
-export function supabaseAdmin() {
-  if (!serviceKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
-  return createClient(url, serviceKey, { auth: { persistSession: false } });
-}
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type Message = {
   id: string;
@@ -23,3 +7,36 @@ export type Message = {
   user_name: string | null;
   created_at: string;
 };
+
+function getEnv(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(
+      `${name} is not set. Add it in your .env file (and Vercel env vars for deploys).`
+    );
+  }
+  return value;
+}
+
+// Browser-safe client (anon key) — used for the realtime subscription.
+// Lazy so missing env vars don't crash the build.
+let browserClient: SupabaseClient | null = null;
+export function getSupabaseBrowser(): SupabaseClient {
+  if (!browserClient) {
+    browserClient = createClient(
+      getEnv("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
+      getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+      { auth: { persistSession: false } }
+    );
+  }
+  return browserClient;
+}
+
+// Server-only client (service role) — used to insert/select messages on the server.
+// NEVER import from client components.
+export function supabaseAdmin(): SupabaseClient {
+  return createClient(
+    getEnv("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL),
+    getEnv("SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY),
+    { auth: { persistSession: false } }
+  );
+}

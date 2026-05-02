@@ -13,14 +13,17 @@ export async function sendMessage(content: string) {
   if (!trimmed) return { error: "Message cannot be empty." };
   if (trimmed.length > 1000) return { error: "Message too long (max 1000 chars)." };
 
-  const { error } = await supabaseAdmin()
-    .from("messages")
-    .insert({
-      content: trimmed,
-      user_email: session.user.email,
-      user_name: session.user.name ?? null,
-    });
-
-  if (error) return { error: error.message };
-  return { ok: true };
+  try {
+    const { error } = await supabaseAdmin()
+      .from("messages")
+      .insert({
+        content: trimmed,
+        user_email: session.user.email,
+        user_name: session.user.name ?? null,
+      });
+    if (error) return { error: error.message };
+    return { ok: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Failed to send message." };
+  }
 }

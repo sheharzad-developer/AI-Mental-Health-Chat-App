@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendMessage } from "@/app/community/actions";
-import { supabaseBrowser, type Message } from "@/lib/supabase";
+import { getSupabaseBrowser, type Message } from "@/lib/supabase";
 
 type Props = {
   initialMessages: Message[];
@@ -18,7 +18,8 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
 
   // Subscribe to new messages in real time
   useEffect(() => {
-    const channel = supabaseBrowser
+    const supabase = getSupabaseBrowser();
+    const channel = supabase
       .channel("messages")
       .on(
         "postgres_changes",
@@ -30,7 +31,7 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
       .subscribe();
 
     return () => {
-      supabaseBrowser.removeChannel(channel);
+      supabase.removeChannel(channel);
     };
   }, []);
 
