@@ -3,16 +3,17 @@ import { NextResponse } from "next/server";
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
-  const isOnChat = req.nextUrl.pathname.startsWith("/chat");
+  const path = req.nextUrl.pathname;
+  const isProtected = path.startsWith("/chat") || path.startsWith("/community");
 
-  if (isOnChat && !isLoggedIn) {
+  if (isProtected && !isLoggedIn) {
     return NextResponse.redirect(new URL("/", req.nextUrl));
   }
-  if (req.nextUrl.pathname === "/" && isLoggedIn) {
+  if (path === "/" && isLoggedIn) {
     return NextResponse.redirect(new URL("/chat", req.nextUrl));
   }
 });
 
 export const config = {
-  matcher: ["/", "/chat/:path*"],
+  matcher: ["/", "/chat/:path*", "/community/:path*"],
 };
