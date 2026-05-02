@@ -5,28 +5,26 @@ export default async function ChatPage() {
   const session = await auth();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <header className="flex items-center justify-between border-b border-stone-200 px-4 py-3 dark:border-stone-800">
-        <span className="text-sm text-stone-600 dark:text-stone-400">
-          Signed in as{" "}
-          <span className="font-medium text-stone-900 dark:text-stone-100">
-            {session?.user?.email ?? "guest"}
-          </span>
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2 sm:right-5 sm:top-5">
+        <span className="pointer-events-auto hidden rounded-full bg-white/80 px-3 py-1.5 text-xs text-stone-600 shadow-sm backdrop-blur sm:inline dark:bg-stone-900/70 dark:text-stone-300">
+          {session?.user?.email ?? "guest"}
         </span>
         <form
           action={async () => {
             "use server";
             await signOut({ redirectTo: "/" });
           }}
+          className="pointer-events-auto"
         >
           <button
             type="submit"
-            className="rounded-md border border-stone-300 px-3 py-1.5 text-xs font-medium text-stone-700 transition hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+            className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-stone-900/80 dark:text-stone-200 dark:hover:bg-stone-900"
           >
             Sign out
           </button>
         </form>
-      </header>
+      </div>
       <WellnessChat />
     </div>
   );
