@@ -120,4 +120,6 @@ Suggestion:
 <text>
 
 Follow-up:
-<text>`;
+<text>
+
+Each label MUST appear on its own line, followed by a colon, in plain text. Do NOT use markdown (no **, ##, -, or > before the labels). Do not skip the colon.`;

@@ -27,12 +27,41 @@ Follow-up:
 How are you feeling today, in a few honest words?`,
 };
 
-const SECTION_HEADERS = [
-  "Acknowledgment:",
-  "Insight:",
-  "Suggestion:",
-  "Follow-up:",
+const SECTION_HEADINGS = [
+  "Acknowledgment",
+  "Insight",
+  "Suggestion",
+  "Follow-up",
 ] as const;
+
+const HEADING_SET = new Set<string>(SECTION_HEADINGS);
+
+// Match a heading line in any of these formats:
+//   Acknowledgment:        body
+//   Acknowledgment
+//   **Acknowledgment**
+//   ## Acknowledgment
+//   - **Acknowledgment:**
+function matchHeading(line: string): { heading: string; rest: string } | null {
+  const trimmed = line.trim();
+  if (!trimmed) return null;
+
+  // Strip markdown noise: leading ##, ###, *, -, **, __
+  const stripped = trimmed
+    .replace(/^[#*_\-\s]+/, "")
+    .replace(/[*_]+$/, "")
+    .trim();
+
+  for (const heading of SECTION_HEADINGS) {
+    // Match the heading word optionally followed by a colon, then any rest of the line
+    const regex = new RegExp(`^${heading.replace("-", "\\-")}\\s*:?\\s*(.*)$`, "i");
+    const m = stripped.match(regex);
+    if (m) {
+      return { heading, rest: m[1].trim() };
+    }
+  }
+  return null;
+}
 
 function parseWellnessFormat(content: string): Array<{ heading: string; body: string }> | null {
   const lines = content.split("\n");
@@ -49,22 +78,19 @@ function parseWellnessFormat(content: string): Array<{ heading: string; body: st
   };
 
   for (const line of lines) {
-    const trimmedStart = line.trimStart();
-    const matched = SECTION_HEADERS.find((h) => trimmedStart.startsWith(h));
-    if (matched) {
+    const m = matchHeading(line);
+    if (m) {
       flush();
-      currentHeading = matched.slice(0, -1);
-      const rest = line.slice(line.indexOf(matched) + matched.length).trim();
-      if (rest) currentBody.push(rest);
+      currentHeading = m.heading;
+      if (m.rest) currentBody.push(m.rest);
     } else if (currentHeading !== null) {
       currentBody.push(line);
     }
   }
   flush();
 
-  const validHeadings = new Set(SECTION_HEADERS.map((h) => h.slice(0, -1)));
   const looksStructured =
-    sections.length > 0 && sections.every((s) => validHeadings.has(s.heading));
+    sections.length >= 2 && sections.every((s) => HEADING_SET.has(s.heading));
   if (!looksStructured) return null;
   return sections;
 }

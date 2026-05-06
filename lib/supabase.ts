@@ -8,6 +8,31 @@ export type Message = {
   created_at: string;
 };
 
+export type Doctor = {
+  id: string;
+  name: string;
+  specialty: string;
+  credentials: string;
+  bio: string;
+  photo_url: string;
+  languages: string[];
+  years_experience: number;
+  created_at: string;
+};
+
+export type BookingStatus = "pending_payment" | "paid" | "cancelled";
+
+export type Booking = {
+  id: string;
+  user_email: string;
+  doctor_id: string;
+  scheduled_for: string;
+  notes: string | null;
+  status: BookingStatus;
+  stripe_session_id: string | null;
+  created_at: string;
+};
+
 function getEnv(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(

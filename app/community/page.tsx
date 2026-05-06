@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
+import { AppHeader } from "@/components/AppHeader";
 import { CommunityRoom } from "@/components/CommunityRoom";
 import { supabaseAdmin } from "@/lib/supabase";
 import type { Message } from "@/lib/supabase";
@@ -19,38 +19,23 @@ export default async function CommunityPage() {
       .limit(100);
     initialMessages = (data as Message[]) ?? [];
   } catch {
-    // Supabase env vars not set yet — render the room empty so the page still works.
+    // env not set
   }
 
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-gradient-to-br from-[#e5f0eb] via-[#eef3f0] to-[#e8e6f2] dark:from-[#080a09] dark:via-[#0d1210] dark:to-[#0a0c14]">
-      <header className="flex items-center justify-between border-b border-stone-200/60 bg-white/60 px-4 py-3 backdrop-blur dark:border-stone-800/60 dark:bg-stone-900/40">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/chat"
-            className="text-xs font-medium text-teal-700 hover:underline dark:text-teal-300"
-          >
-            ← AI Companion
-          </Link>
-          <h1 className="text-sm font-semibold text-stone-800 dark:text-stone-200">
+      <AppHeader email={email} active="community" />
+      <div className="mx-auto w-full max-w-3xl flex-1 flex-col">
+        <div className="px-4 pt-6 sm:px-6">
+          <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
             Community Room
           </h1>
+          <p className="mt-1 text-sm text-stone-600 dark:text-stone-400">
+            A supportive space. Be kind — there are real people on the other side.
+          </p>
         </div>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: "/" });
-          }}
-        >
-          <button
-            type="submit"
-            className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm hover:bg-stone-50 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800"
-          >
-            Sign out
-          </button>
-        </form>
-      </header>
-      <CommunityRoom initialMessages={initialMessages} currentUserEmail={email} />
+        <CommunityRoom initialMessages={initialMessages} currentUserEmail={email} />
+      </div>
     </div>
   );
 }

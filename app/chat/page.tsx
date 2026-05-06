@@ -7,26 +7,44 @@ export default async function ChatPage() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
-      <div className="pointer-events-none absolute right-3 top-3 z-20 flex items-center gap-2 sm:right-5 sm:top-5">
+      <div className="pointer-events-none fixed right-3 top-3 z-30 flex items-center gap-1.5 sm:right-5 sm:top-5">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-stone-200/70 bg-white/80 px-1.5 py-1 shadow-md backdrop-blur dark:border-stone-700/60 dark:bg-stone-900/70">
+          <Link
+            href="/doctors"
+            className="rounded-full px-3 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+          >
+            Doctors
+          </Link>
+          <Link
+            href="/community"
+            className="rounded-full px-3 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+          >
+            Community
+          </Link>
+          <Link
+            href="/bookings"
+            className="rounded-full px-3 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100"
+          >
+            Bookings
+          </Link>
+        </div>
         <Link
-          href="/community"
-          className="pointer-events-auto rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-teal-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-stone-900/80 dark:text-teal-300 dark:hover:bg-stone-900"
+          href="/pricing"
+          className="pointer-events-auto rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:shadow-md"
         >
-          Community →
+          ✨ Upgrade
         </Link>
-        <span className="pointer-events-auto hidden rounded-full bg-white/80 px-3 py-1.5 text-xs text-stone-600 shadow-sm backdrop-blur sm:inline dark:bg-stone-900/70 dark:text-stone-300">
-          {session?.user?.email ?? "guest"}
-        </span>
         <form
           action={async () => {
             "use server";
             await signOut({ redirectTo: "/" });
           }}
           className="pointer-events-auto"
+          title={session?.user?.email ?? ""}
         >
           <button
             type="submit"
-            className="rounded-full bg-white/90 px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm backdrop-blur transition hover:bg-white dark:bg-stone-900/80 dark:text-stone-200 dark:hover:bg-stone-900"
+            className="rounded-full border border-stone-300/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm backdrop-blur transition hover:bg-white dark:border-stone-700/70 dark:bg-stone-900/70 dark:text-stone-200 dark:hover:bg-stone-900"
           >
             Sign out
           </button>
