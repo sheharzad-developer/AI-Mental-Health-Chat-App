@@ -16,7 +16,6 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
   const [isPending, startTransition] = useTransition();
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe to new messages in real time
   useEffect(() => {
     const supabase = getSupabaseBrowser();
     const channel = supabase
@@ -35,7 +34,6 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
     };
   }, []);
 
-  // Auto-scroll on new messages
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -49,15 +47,28 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
       const res = await sendMessage(content);
       if (res?.error) {
         setError(res.error);
-        setDraft(content); // restore on failure
+        setDraft(content);
       }
     });
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem-4.5rem)] flex-col sm:h-[calc(100dvh-4rem)]">
-      <div className="flex-1 overflow-y-auto px-4 py-6">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Title bar */}
+      <div className="shrink-0 border-b border-stone-200/60 bg-white/40 px-4 py-3 backdrop-blur dark:border-stone-800/60 dark:bg-stone-900/30 sm:px-6 sm:py-4">
+        <div className="mx-auto max-w-2xl">
+          <h1 className="text-base font-bold text-stone-900 sm:text-lg dark:text-stone-100">
+            Community Room
+          </h1>
+          <p className="mt-0.5 text-xs text-stone-600 sm:text-sm dark:text-stone-400">
+            A supportive space. Be kind — there are real people on the other side.
+          </p>
+        </div>
+      </div>
+
+      {/* Messages — scrollable */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-6">
+        <div className="mx-auto flex max-w-2xl flex-col gap-3 sm:gap-4">
           {messages.length === 0 && (
             <p className="text-center text-sm text-stone-500 dark:text-stone-400">
               No messages yet. Be the first to share.
@@ -74,7 +85,7 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
                   {m.user_name || m.user_email.split("@")[0]}
                 </span>
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-sm sm:max-w-[80%] ${
                     mine
                       ? "bg-teal-600 text-white"
                       : "bg-white text-stone-800 ring-1 ring-stone-200 dark:bg-stone-900 dark:text-stone-100 dark:ring-stone-800"
@@ -89,9 +100,10 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
         </div>
       </div>
 
+      {/* Input — extra bottom padding on mobile to clear the tab bar */}
       <form
         onSubmit={handleSubmit}
-        className="border-t border-stone-200 bg-white/70 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-900/60"
+        className="shrink-0 border-t border-stone-200 bg-white/80 px-3 pb-[calc(env(safe-area-inset-bottom)+4.75rem)] pt-3 backdrop-blur sm:px-4 sm:pb-3 dark:border-stone-800 dark:bg-stone-900/70"
       >
         <div className="mx-auto flex max-w-2xl gap-2">
           <input
@@ -106,7 +118,7 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
           <button
             type="submit"
             disabled={isPending || !draft.trim()}
-            className="rounded-full bg-teal-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="shrink-0 rounded-full bg-teal-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-60 sm:px-5"
           >
             Send
           </button>
