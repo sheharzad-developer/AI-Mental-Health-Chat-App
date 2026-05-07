@@ -1,6 +1,13 @@
 import { signIn } from "@/auth";
 
-export default function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>;
+}) {
+  const { error } = await searchParams;
+  const isAccessDenied = error === "AccessDenied";
+
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white/70 p-8 text-center shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/60">
@@ -11,12 +18,21 @@ export default function Home() {
           Sign in to start your wellness conversation.
         </p>
 
+        {isAccessDenied && (
+          <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+            <strong className="block">Access denied</strong>
+            <span>
+              This app is currently invite-only. Ask the developer to add your email to the allow-list.
+            </span>
+          </div>
+        )}
+
         <form
           action={async () => {
             "use server";
             await signIn("google", { redirectTo: "/chat" });
           }}
-          className="mt-8"
+          className="mt-6"
         >
           <button
             type="submit"
