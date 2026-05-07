@@ -55,7 +55,7 @@ export function CommunityRoom({ initialMessages, currentUserEmail }: Props) {
   }
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] flex-col">
+    <div className="flex h-[calc(100dvh-4rem-4.5rem)] flex-col sm:h-[calc(100dvh-4rem)]">
       <div className="flex-1 overflow-y-auto px-4 py-6">
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
           {messages.length === 0 && (

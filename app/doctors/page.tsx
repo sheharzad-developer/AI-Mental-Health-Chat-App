@@ -26,7 +26,7 @@ export default async function DoctorsPage() {
     <div className="flex min-h-dvh flex-1 flex-col bg-gradient-to-br from-[#e5f0eb] via-[#eef3f0] to-[#e8e6f2] dark:from-[#080a09] dark:via-[#0d1210] dark:to-[#0a0c14]">
       <AppHeader email={email} active="doctors" />
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-24 pt-8 sm:px-6 sm:pb-10 sm:pt-10">
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100">
             Find your therapist

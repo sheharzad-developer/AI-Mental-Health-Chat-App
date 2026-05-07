@@ -290,26 +290,26 @@ export function WellnessChat() {
       />
 
       <div
-        className="relative z-10 mx-auto flex min-h-dvh w-full max-w-2xl flex-col pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pl-6 sm:pr-6 sm:pt-6 sm:pb-8 md:pt-8"
+        className="relative z-10 mx-auto flex min-h-dvh w-full max-w-2xl flex-col pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pl-6 sm:pr-6 sm:pt-6 sm:pb-8 md:pt-8"
       >
         <div
           className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-[var(--wellness-glass-border)] bg-[var(--wellness-glass)] shadow-[0_25px_80px_-20px_rgba(15,80,70,0.25)] backdrop-blur-2xl dark:shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)]"
         >
-          <header className="shrink-0 border-b border-stone-200/60 px-5 py-5 dark:border-stone-700/50 sm:px-6">
+          <header className="shrink-0 border-b border-stone-200/60 px-4 py-3.5 dark:border-stone-700/50 sm:px-6 sm:py-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-teal-700/80 dark:text-teal-300/80">
                   Wellness
                 </p>
-                <h1 className="mt-1 text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl dark:text-stone-50">
+                <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-stone-900 sm:mt-1 sm:text-2xl dark:text-stone-50">
                   Companion
                 </h1>
               </div>
-              <span className="rounded-full bg-teal-600/10 px-3 py-1 text-[0.7rem] font-medium text-teal-800 dark:bg-teal-500/15 dark:text-teal-200">
+              <span className="hidden rounded-full bg-teal-600/10 px-3 py-1 text-[0.7rem] font-medium text-teal-800 sm:inline-block dark:bg-teal-500/15 dark:text-teal-200">
                 Supportive · Not clinical
               </span>
             </div>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-stone-600 dark:text-stone-400">
+            <p className="mt-2 hidden max-w-xl text-sm leading-relaxed text-stone-600 sm:block sm:mt-3 dark:text-stone-400">
               A calm space to share what you&apos;re feeling. Not a substitute for professional care.
               If you&apos;re in immediate danger, contact local emergency or crisis services.
             </p>
