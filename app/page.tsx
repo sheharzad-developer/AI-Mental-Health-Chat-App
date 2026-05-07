@@ -11,19 +11,20 @@ export default async function Home({
   const initialMode = mode === "signup" ? "signup" : "signin";
 
   return (
-    <main className="flex flex-1 items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white/80 p-7 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/70">
-        <div className="text-center">
-          <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 text-xl font-bold text-white shadow-md">
-            ✦
-          </div>
-          <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-            Welcome
-          </h1>
-          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-            Sign in to start your wellness conversation.
-          </p>
+    <main className="flex flex-1 flex-col items-center justify-center px-4 py-10">
+      <div className="mb-6 flex flex-col items-center text-center">
+        <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 text-2xl font-bold text-white shadow-lg">
+          ✦
         </div>
+        <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-100">
+          Welcome
+        </h1>
+        <p className="mt-2 max-w-sm text-sm text-stone-500 dark:text-stone-400">
+          Sign in to start your wellness conversation.
+        </p>
+      </div>
+
+      <div className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white/80 p-7 shadow-sm backdrop-blur dark:border-stone-800 dark:bg-stone-900/70">
 
         {isAccessDenied && (
           <div className="mt-5 rounded-lg border border-rose-200 bg-rose-50 p-3 text-left text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
