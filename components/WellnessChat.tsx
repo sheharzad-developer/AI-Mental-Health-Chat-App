@@ -209,8 +209,24 @@ function ThinkingIndicator() {
   );
 }
 
-export function WellnessChat() {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
+type WellnessChatProps = {
+  initialChatId?: string | null;
+  initialMessages?: { role: "user" | "assistant"; content: string; crisis?: boolean }[];
+};
+
+export function WellnessChat({ initialChatId = null, initialMessages = [] }: WellnessChatProps = {}) {
+  const seedMessages: ChatMessage[] =
+    initialMessages.length > 0
+      ? initialMessages.map((m) => ({
+          id: crypto.randomUUID(),
+          role: m.role,
+          content: m.content,
+          crisis: m.crisis,
+        }))
+      : [WELCOME];
+
+  const [messages, setMessages] = useState<ChatMessage[]>(seedMessages);
+  const [chatId, setChatId] = useState<string | null>(initialChatId);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -235,13 +251,21 @@ export function WellnessChat() {
     setLoading(true);
 
     try {
-      const payload = [...messages, userMsg].map(({ role, content }) => ({ role, content }));
+      // Skip the WELCOME message when sending to API (it's UI-only).
+      const payload = [...messages, userMsg]
+        .filter((m) => m.id !== "welcome")
+        .map(({ role, content }) => ({ role, content }));
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: payload }),
+        body: JSON.stringify({ messages: payload, chatId }),
       });
-      const data = (await res.json()) as { message?: string; crisis?: boolean; error?: string };
+      const data = (await res.json()) as {
+        message?: string;
+        crisis?: boolean;
+        error?: string;
+        chatId?: string | null;
+      };
 
       if (!res.ok) {
         throw new Error(data.error ?? "Something went wrong");
@@ -249,6 +273,14 @@ export function WellnessChat() {
       const reply = data.message;
       if (!reply) {
         throw new Error("No reply from server");
+      }
+
+      // If this was a new chat, the server created one — update local state and URL
+      if (!chatId && data.chatId) {
+        setChatId(data.chatId);
+        if (typeof window !== "undefined") {
+          window.history.replaceState(null, "", `/chat?id=${data.chatId}`);
+        }
       }
 
       setMessages((m) => [
@@ -265,7 +297,7 @@ export function WellnessChat() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages]);
+  }, [input, loading, messages, chatId]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -275,112 +307,95 @@ export function WellnessChat() {
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-1 flex-col overflow-hidden bg-gradient-to-br from-[#e5f0eb] via-[#eef3f0] to-[#e8e6f2] dark:from-[#080a09] dark:via-[#0d1210] dark:to-[#0a0c14]">
-      <div
-        className="pointer-events-none absolute -left-40 top-0 h-[28rem] w-[28rem] rounded-full bg-teal-400/20 blur-[100px] dark:bg-teal-600/12"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute -right-32 bottom-20 h-[26rem] w-[26rem] rounded-full bg-violet-400/18 blur-[100px] dark:bg-violet-600/10"
-        aria-hidden
-      />
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-300/10 blur-[80px] dark:bg-emerald-500/8"
-        aria-hidden
-      />
-
-      <div
-        className="relative z-10 mx-auto flex min-h-dvh w-full max-w-2xl flex-col pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:pl-6 sm:pr-6 sm:pt-6 sm:pb-8 md:pt-8"
-      >
-        <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.75rem] border border-[var(--wellness-glass-border)] bg-[var(--wellness-glass)] shadow-[0_25px_80px_-20px_rgba(15,80,70,0.25)] backdrop-blur-2xl dark:shadow-[0_25px_80px_-20px_rgba(0,0,0,0.65)]"
-        >
-          <header className="shrink-0 border-b border-stone-200/60 px-4 py-3.5 dark:border-stone-700/50 sm:px-6 sm:py-5">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-teal-700/80 dark:text-teal-300/80">
-                  Wellness
-                </p>
-                <h1 className="mt-0.5 text-lg font-semibold tracking-tight text-stone-900 sm:mt-1 sm:text-2xl dark:text-stone-50">
-                  Companion
-                </h1>
-              </div>
-              <span className="hidden rounded-full bg-teal-600/10 px-3 py-1 text-[0.7rem] font-medium text-teal-800 sm:inline-block dark:bg-teal-500/15 dark:text-teal-200">
-                Supportive · Not clinical
-              </span>
-            </div>
-            <p className="mt-2 hidden max-w-xl text-sm leading-relaxed text-stone-600 sm:block sm:mt-3 dark:text-stone-400">
-              A calm space to share what you&apos;re feeling. Not a substitute for professional care.
-              If you&apos;re in immediate danger, contact local emergency or crisis services.
+    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-stone-50 dark:bg-stone-950">
+      {/* Header — full width, internal max-w content */}
+      <header className="relative z-10 shrink-0 border-b border-stone-200 bg-white pt-[calc(3rem+env(safe-area-inset-top))] dark:border-stone-800 dark:bg-stone-950 lg:pt-4">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 pb-3 sm:px-6 sm:pb-4">
+          <div>
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-teal-700/80 dark:text-teal-300/80">
+              Wellness
             </p>
-          </header>
-
-          <div
-            className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6"
-            role="log"
-            aria-live="polite"
-            aria-relevant="additions"
-          >
-            {messages.map((m) => (
-              <MessageBubble key={m.id} msg={m} />
-            ))}
-            {loading && <ThinkingIndicator />}
-            <div ref={bottomRef} className="h-2 shrink-0" />
+            <h1 className="text-lg font-semibold tracking-tight text-stone-900 sm:text-xl dark:text-stone-50">
+              Companion
+            </h1>
           </div>
+          <span className="hidden rounded-full bg-teal-600/10 px-3 py-1 text-[0.7rem] font-medium text-teal-800 sm:inline-block dark:bg-teal-500/15 dark:text-teal-200">
+            Supportive · Not clinical
+          </span>
+        </div>
+      </header>
 
-          {error && (
-            <div
-              className="mx-4 mb-1 rounded-xl border border-red-200/90 bg-red-50/95 px-4 py-3 text-sm leading-snug text-red-900 shadow-sm dark:border-red-900/50 dark:bg-red-950/55 dark:text-red-100 sm:mx-6"
-              role="alert"
-            >
-              {error}
-            </div>
-          )}
+      {/* Messages — full width with internally constrained content */}
+      <div
+        className="relative z-10 min-h-0 flex-1 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
+      >
+        <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:px-6">
+          {messages.map((m) => (
+            <MessageBubble key={m.id} msg={m} />
+          ))}
+          {loading && <ThinkingIndicator />}
+          <div ref={bottomRef} className="h-2 shrink-0" />
+        </div>
+      </div>
 
-          <div className="shrink-0 border-t border-stone-200/60 bg-white/30 p-4 dark:border-stone-700/50 dark:bg-stone-950/30 sm:p-5">
-            <label htmlFor="wellness-input" className="sr-only">
-              Your message
-            </label>
-            <textarea
-              id="wellness-input"
-              rows={3}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Share what's on your mind…"
-              className="w-full resize-none rounded-2xl border border-stone-200/90 bg-white/90 px-4 py-3 text-[0.9375rem] text-stone-900 shadow-inner outline-none ring-0 placeholder:text-stone-400 transition-[border-color,box-shadow] focus:border-teal-500/70 focus:shadow-[0_0_0_3px_rgba(13,148,136,0.2)] dark:border-stone-600/80 dark:bg-stone-900/80 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-teal-400/60 dark:focus:shadow-[0_0_0_3px_rgba(45,212,191,0.15)]"
-              disabled={loading}
-            />
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[0.7rem] text-stone-500 dark:text-stone-500">
-                <kbd className="rounded border border-stone-300/80 bg-stone-100/80 px-1.5 py-0.5 font-mono text-[0.65rem] dark:border-stone-600 dark:bg-stone-800">
-                  Enter
-                </kbd>{" "}
-                to send ·{" "}
-                <kbd className="rounded border border-stone-300/80 bg-stone-100/80 px-1.5 py-0.5 font-mono text-[0.65rem] dark:border-stone-600 dark:bg-stone-800">
-                  Shift+Enter
-                </kbd>{" "}
-                new line
-              </p>
-              <button
-                type="button"
-                onClick={() => void send()}
-                disabled={loading || !input.trim()}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-[transform,opacity,box-shadow] hover:shadow-xl hover:shadow-teal-900/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 dark:from-teal-500 dark:to-emerald-600 dark:shadow-black/40"
-              >
-                Send
-                <svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                </svg>
-              </button>
-            </div>
+      {error && (
+        <div
+          className="relative z-10 mx-auto w-full max-w-3xl px-4 sm:px-6"
+          role="alert"
+        >
+          <div className="mb-2 rounded-xl border border-red-200/90 bg-red-50/95 px-4 py-3 text-sm leading-snug text-red-900 shadow-sm dark:border-red-900/50 dark:bg-red-950/55 dark:text-red-100">
+            {error}
           </div>
         </div>
+      )}
 
-        <p className="mt-4 text-center text-[0.65rem] text-stone-500 dark:text-stone-500">
-          If you&apos;re struggling with self-harm or suicidal thoughts, please reach out to a crisis
-          line or emergency services where you live.
-        </p>
+      {/* Input — full-width bar, internally constrained */}
+      <div className="relative z-10 shrink-0 border-t border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-950">
+        <div className="mx-auto max-w-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 sm:px-6 sm:pt-4">
+          <label htmlFor="wellness-input" className="sr-only">
+            Your message
+          </label>
+          <textarea
+            id="wellness-input"
+            rows={2}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Share what's on your mind…"
+            className="w-full resize-none rounded-2xl border border-stone-200/90 bg-white/90 px-4 py-3 text-[0.9375rem] text-stone-900 shadow-inner outline-none ring-0 placeholder:text-stone-400 transition-[border-color,box-shadow] focus:border-teal-500/70 focus:shadow-[0_0_0_3px_rgba(13,148,136,0.2)] dark:border-stone-600/80 dark:bg-stone-900/80 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-teal-400/60 dark:focus:shadow-[0_0_0_3px_rgba(45,212,191,0.15)]"
+            disabled={loading}
+          />
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+            <p className="hidden text-[0.7rem] text-stone-500 sm:block dark:text-stone-500">
+              <kbd className="rounded border border-stone-300/80 bg-stone-100/80 px-1.5 py-0.5 font-mono text-[0.65rem] dark:border-stone-600 dark:bg-stone-800">
+                Enter
+              </kbd>{" "}
+              to send ·{" "}
+              <kbd className="rounded border border-stone-300/80 bg-stone-100/80 px-1.5 py-0.5 font-mono text-[0.65rem] dark:border-stone-600 dark:bg-stone-800">
+                Shift+Enter
+              </kbd>{" "}
+              new line
+            </p>
+            <button
+              type="button"
+              onClick={() => void send()}
+              disabled={loading || !input.trim()}
+              className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-[transform,opacity,box-shadow] hover:shadow-xl hover:shadow-teal-900/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 dark:from-teal-500 dark:to-emerald-600 dark:shadow-black/40"
+            >
+              Send
+              <svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+              </svg>
+            </button>
+          </div>
+          <p className="mt-2 text-center text-[0.65rem] text-stone-500 dark:text-stone-500">
+            If you&apos;re struggling with self-harm or suicidal thoughts, please reach out to a crisis
+            line or emergency services where you live.
+          </p>
+        </div>
       </div>
     </div>
   );
