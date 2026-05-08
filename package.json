@@ -7,9 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "stripe-server": "node server.js"
+    "stripe-server": "node server.js",
+    "generate-data": "node --env-file=.env scripts/generate-training-data.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.95.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.105.1",
     "bcryptjs": "^3.0.3",
