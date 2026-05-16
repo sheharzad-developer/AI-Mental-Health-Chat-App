@@ -13,12 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Wellness Companion",
+  title: "AuraAi — Calm space for your mind",
   description: "A calm, supportive space for everyday emotional well-being—not a substitute for professional care.",
-  applicationName: "AI Wellness Companion",
+  applicationName: "AuraAi",
   appleWebApp: {
     capable: true,
-    title: "Wellness Companion",
+    title: "AuraAi",
     statusBarStyle: "default",
   },
   formatDetection: {

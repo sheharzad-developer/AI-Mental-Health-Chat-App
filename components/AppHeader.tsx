@@ -18,11 +18,14 @@ export function AppHeader({ email, active }: Props) {
     <header className="sticky top-0 z-30 border-b border-stone-200/60 bg-white/80 backdrop-blur-xl dark:border-stone-800/60 dark:bg-stone-950/75">
       <div className="mx-auto flex max-w-6xl items-center gap-2 px-3 py-3 sm:gap-4 sm:px-4">
         <Link href="/chat" className="flex shrink-0 items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-sm font-bold text-white shadow-sm">
-            ✦
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logos/Logo.svg"
+            alt="AuraAi logo"
+            className="h-8 w-8 rounded-xl shadow-sm"
+          />
           <span className="hidden text-sm font-semibold text-stone-900 sm:inline dark:text-stone-100">
-            Wellness
+            AuraAi
           </span>
         </Link>
 
@@ -45,7 +48,7 @@ export function AppHeader({ email, active }: Props) {
 
         {/* Mobile: page label fills space */}
         <span className="flex-1 text-center text-sm font-semibold text-stone-700 sm:hidden dark:text-stone-300">
-          {active ? NAV.find((n) => n.key === active)?.label : "Wellness"}
+          {active ? NAV.find((n) => n.key === active)?.label : "AuraAi"}
         </span>
 
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">

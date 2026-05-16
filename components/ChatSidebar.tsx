@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { signOut } from "next-auth/react";
+import { deleteChatAction } from "@/app/chat/actions";
 import type { ChatThread } from "@/lib/chats";
 
 type Props = {
@@ -13,6 +14,17 @@ type Props = {
 
 export function ChatSidebar({ email, chats, activeChatId }: Props) {
   const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleDelete(chatId: string, title: string) {
+    if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+    setDeletingId(chatId);
+    startTransition(async () => {
+      await deleteChatAction(chatId);
+      setDeletingId(null);
+    });
+  }
 
   return (
     <>
@@ -45,11 +57,14 @@ export function ChatSidebar({ email, chats, activeChatId }: Props) {
         {/* Brand + New chat */}
         <div className="flex shrink-0 items-center gap-2 border-b border-stone-200 p-3 dark:border-stone-800">
           <Link href="/chat" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-sm font-bold text-white shadow-sm">
-              ✦
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/Logo.svg"
+              alt="AuraAi logo"
+              className="h-8 w-8 rounded-xl shadow-sm"
+            />
             <span className="font-semibold text-stone-900 dark:text-stone-100">
-              Wellness
+              AuraAi
             </span>
           </Link>
           <Link
@@ -78,20 +93,43 @@ export function ChatSidebar({ email, chats, activeChatId }: Props) {
             <ul className="space-y-0.5">
               {chats.map((c) => {
                 const isActive = c.id === activeChatId;
+                const isDeleting = deletingId === c.id;
                 return (
-                  <li key={c.id}>
+                  <li
+                    key={c.id}
+                    className={`group relative flex items-center gap-1 rounded-lg pr-1 transition ${
+                      isActive
+                        ? "bg-teal-50 dark:bg-teal-900/40"
+                        : "hover:bg-stone-100 dark:hover:bg-stone-800"
+                    } ${isDeleting ? "opacity-40" : ""}`}
+                  >
                     <Link
                       href={`/chat?id=${c.id}`}
                       onClick={() => setOpen(false)}
-                      className={`block truncate rounded-lg px-3 py-2 text-sm transition ${
+                      className={`block min-w-0 flex-1 truncate rounded-lg px-3 py-2 text-sm transition ${
                         isActive
-                          ? "bg-teal-50 font-medium text-teal-800 dark:bg-teal-900/40 dark:text-teal-200"
-                          : "text-stone-700 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
+                          ? "font-medium text-teal-800 dark:text-teal-200"
+                          : "text-stone-700 dark:text-stone-300"
                       }`}
                       title={c.title}
                     >
                       {c.title}
                     </Link>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleDelete(c.id, c.title);
+                      }}
+                      disabled={isPending}
+                      aria-label={`Delete ${c.title}`}
+                      className="shrink-0 rounded-md p-1.5 text-stone-400 transition hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 disabled:cursor-not-allowed dark:hover:bg-rose-950/40 dark:hover:text-rose-400 lg:opacity-0 lg:group-hover:opacity-100"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      </svg>
+                    </button>
                   </li>
                 );
               })}

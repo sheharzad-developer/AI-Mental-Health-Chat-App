@@ -16,11 +16,14 @@ export default async function Home({
       <nav className="sticky top-0 z-30 border-b border-stone-200/60 bg-white/80 backdrop-blur-xl dark:border-stone-800/60 dark:bg-stone-950/80">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 text-sm font-bold text-white shadow-sm">
-              ✦
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/Logo.svg"
+              alt="AuraAi logo"
+              className="h-8 w-8 rounded-xl shadow-sm"
+            />
             <span className="font-semibold text-stone-900 dark:text-stone-100">
-              Wellness
+              AuraAi
             </span>
           </div>
           <a
@@ -167,9 +170,12 @@ export default async function Home({
       >
         <div className="mx-auto flex max-w-md flex-col items-center px-4 sm:px-6">
           <div className="mb-6 flex flex-col items-center text-center">
-            <div className="mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 text-2xl font-bold text-white shadow-lg">
-              ✦
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logos/Logo.svg"
+              alt="AuraAi logo"
+              className="mb-4 h-16 w-16 rounded-2xl shadow-lg"
+            />
             <h2 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl dark:text-stone-100">
               Welcome
             </h2>
@@ -215,7 +221,7 @@ export default async function Home({
       {/* Footer */}
       <footer className="border-t border-stone-200 bg-white py-8 dark:border-stone-800 dark:bg-stone-950">
         <div className="mx-auto max-w-5xl px-4 text-center text-xs text-stone-500 sm:px-6 dark:text-stone-500">
-          © {new Date().getFullYear()} Wellness · Built with care
+          © {new Date().getFullYear()} AuraAi · Built with care
         </div>
       </footer>
     </main>

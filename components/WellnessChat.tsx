@@ -313,7 +313,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 pb-3 sm:px-6 sm:pb-4">
           <div>
             <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-teal-700/80 dark:text-teal-300/80">
-              Wellness
+              AuraAi
             </p>
             <h1 className="text-lg font-semibold tracking-tight text-stone-900 sm:text-xl dark:text-stone-50">
               Companion

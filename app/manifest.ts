@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "AI Wellness Companion",
-    short_name: "Wellness",
+    name: "AuraAi",
+    short_name: "AuraAi",
     description:
       "A calm, supportive space for everyday emotional well-being—not a substitute for professional care.",
     start_url: "/",
