@@ -1,5 +1,6 @@
 "use client";
 
+import { EventType } from "@ag-ui/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Role = "user" | "assistant";
@@ -229,17 +230,23 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
   const [chatId, setChatId] = useState<string | null>(initialChatId);
   const [threadId, setThreadId] = useState<string>(() => initialChatId ?? crypto.randomUUID());
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [awaitingFirstChunk, setAwaitingFirstChunk] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, awaitingFirstChunk]);
+
+  const stop = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const send = useCallback(async () => {
     const trimmed = input.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || busy) return;
 
     setError(null);
     const userMsg: ChatMessage = {
@@ -249,7 +256,11 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
     };
     setMessages((m) => [...m, userMsg]);
     setInput("");
-    setLoading(true);
+    setBusy(true);
+    setAwaitingFirstChunk(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     const runId = crypto.randomUUID();
     const crisisMessageIds = new Set<string>();
@@ -267,7 +278,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
       }
       const newLocalId = crypto.randomUUID();
       idMap.set(serverMessageId, newLocalId);
-      setLoading(false);
+      setAwaitingFirstChunk(false);
       setMessages((m) => [
         ...m,
         {
@@ -279,22 +290,22 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
       ]);
     };
 
-    const handleEvent = (evt: { type: string } & Record<string, unknown>) => {
+    const handleEvent = (evt: { type: EventType } & Record<string, unknown>) => {
       switch (evt.type) {
-        case "TEXT_MESSAGE_START":
+        case EventType.TEXT_MESSAGE_START:
           // Defer bubble creation until the first content chunk so we don't
           // render an empty bubble if the run errors immediately.
           break;
-        case "TEXT_MESSAGE_CONTENT":
-        case "TEXT_MESSAGE_CHUNK": {
+        case EventType.TEXT_MESSAGE_CONTENT:
+        case EventType.TEXT_MESSAGE_CHUNK: {
           const id = typeof evt.messageId === "string" ? evt.messageId : "";
           const delta = typeof evt.delta === "string" ? evt.delta : "";
           if (id && delta) upsertAssistantChunk(id, delta);
           break;
         }
-        case "TEXT_MESSAGE_END":
+        case EventType.TEXT_MESSAGE_END:
           break;
-        case "STATE_SNAPSHOT": {
+        case EventType.STATE_SNAPSHOT: {
           const snap = evt.snapshot as { chatId?: string | null } | undefined;
           if (snap?.chatId && !chatId) {
             setChatId(snap.chatId);
@@ -305,20 +316,20 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
           }
           break;
         }
-        case "CUSTOM": {
+        case EventType.CUSTOM: {
           if (evt.name === "crisis_detected") {
             const value = evt.value as { messageId?: string } | undefined;
             if (value?.messageId) crisisMessageIds.add(value.messageId);
           }
           break;
         }
-        case "RUN_ERROR": {
+        case EventType.RUN_ERROR: {
           const message = typeof evt.message === "string" ? evt.message : "Run failed";
           setError(message);
           break;
         }
-        case "RUN_STARTED":
-        case "RUN_FINISHED":
+        case EventType.RUN_STARTED:
+        case EventType.RUN_FINISHED:
         default:
           break;
       }
@@ -342,6 +353,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
           messages: payload,
           state: { chatId },
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok || !res.body) {
@@ -381,11 +393,19 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
         }
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
+      // User-initiated stop — silent, not an error.
+      const aborted =
+        controller.signal.aborted ||
+        (e instanceof DOMException && e.name === "AbortError");
+      if (!aborted) {
+        setError(e instanceof Error ? e.message : "Request failed");
+      }
     } finally {
-      setLoading(false);
+      setBusy(false);
+      setAwaitingFirstChunk(false);
+      abortRef.current = null;
     }
-  }, [input, loading, messages, chatId, threadId]);
+  }, [input, busy, messages, chatId, threadId]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -424,7 +444,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
           {messages.map((m) => (
             <MessageBubble key={m.id} msg={m} />
           ))}
-          {loading && <ThinkingIndicator />}
+          {awaitingFirstChunk && <ThinkingIndicator />}
           <div ref={bottomRef} className="h-2 shrink-0" />
         </div>
       </div>
@@ -454,7 +474,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
             onKeyDown={onKeyDown}
             placeholder="Share what's on your mind…"
             className="w-full resize-none rounded-2xl border border-stone-200/90 bg-white/90 px-4 py-3 text-[0.9375rem] text-stone-900 shadow-inner outline-none ring-0 placeholder:text-stone-400 transition-[border-color,box-shadow] focus:border-teal-500/70 focus:shadow-[0_0_0_3px_rgba(13,148,136,0.2)] dark:border-stone-600/80 dark:bg-stone-900/80 dark:text-stone-100 dark:placeholder:text-stone-500 dark:focus:border-teal-400/60 dark:focus:shadow-[0_0_0_3px_rgba(45,212,191,0.15)]"
-            disabled={loading}
+            disabled={busy}
           />
           <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
             <p className="hidden text-[0.7rem] text-stone-500 sm:block dark:text-stone-500">
@@ -467,17 +487,31 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
               </kbd>{" "}
               new line
             </p>
-            <button
-              type="button"
-              onClick={() => void send()}
-              disabled={loading || !input.trim()}
-              className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-[transform,opacity,box-shadow] hover:shadow-xl hover:shadow-teal-900/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 dark:from-teal-500 dark:to-emerald-600 dark:shadow-black/40"
-            >
-              Send
-              <svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-              </svg>
-            </button>
+            {busy ? (
+              <button
+                type="button"
+                onClick={stop}
+                className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-stone-700 to-stone-900 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-stone-900/20 transition-[transform,opacity,box-shadow] hover:shadow-xl hover:shadow-stone-900/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-600 active:scale-[0.98] dark:from-stone-200 dark:to-stone-50 dark:text-stone-900 dark:shadow-black/40"
+                aria-label="Stop generating"
+              >
+                Stop
+                <svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void send()}
+                disabled={!input.trim()}
+                className="ml-auto inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-teal-600 to-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-teal-900/20 transition-[transform,opacity,box-shadow] hover:shadow-xl hover:shadow-teal-900/25 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-500 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 dark:from-teal-500 dark:to-emerald-600 dark:shadow-black/40"
+              >
+                Send
+                <svg className="h-4 w-4 opacity-90" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                </svg>
+              </button>
+            )}
           </div>
           <p className="mt-2 text-center text-[0.65rem] text-stone-500 dark:text-stone-500">
             If you&apos;re struggling with self-harm or suicidal thoughts, please reach out to a crisis
