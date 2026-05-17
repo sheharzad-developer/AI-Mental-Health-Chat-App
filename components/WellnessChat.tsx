@@ -227,6 +227,7 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
 
   const [messages, setMessages] = useState<ChatMessage[]>(seedMessages);
   const [chatId, setChatId] = useState<string | null>(initialChatId);
+  const [threadId, setThreadId] = useState<string>(() => initialChatId ?? crypto.randomUUID());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -250,54 +251,141 @@ export function WellnessChat({ initialChatId = null, initialMessages = [] }: Wel
     setInput("");
     setLoading(true);
 
+    const runId = crypto.randomUUID();
+    const crisisMessageIds = new Set<string>();
+    const idMap = new Map<string, string>(); // server messageId -> local bubble id
+
+    const upsertAssistantChunk = (serverMessageId: string, delta: string) => {
+      const localId = idMap.get(serverMessageId);
+      if (localId) {
+        setMessages((m) =>
+          m.map((msg) =>
+            msg.id === localId ? { ...msg, content: msg.content + delta } : msg,
+          ),
+        );
+        return;
+      }
+      const newLocalId = crypto.randomUUID();
+      idMap.set(serverMessageId, newLocalId);
+      setLoading(false);
+      setMessages((m) => [
+        ...m,
+        {
+          id: newLocalId,
+          role: "assistant",
+          content: delta,
+          crisis: crisisMessageIds.has(serverMessageId),
+        },
+      ]);
+    };
+
+    const handleEvent = (evt: { type: string } & Record<string, unknown>) => {
+      switch (evt.type) {
+        case "TEXT_MESSAGE_START":
+          // Defer bubble creation until the first content chunk so we don't
+          // render an empty bubble if the run errors immediately.
+          break;
+        case "TEXT_MESSAGE_CONTENT":
+        case "TEXT_MESSAGE_CHUNK": {
+          const id = typeof evt.messageId === "string" ? evt.messageId : "";
+          const delta = typeof evt.delta === "string" ? evt.delta : "";
+          if (id && delta) upsertAssistantChunk(id, delta);
+          break;
+        }
+        case "TEXT_MESSAGE_END":
+          break;
+        case "STATE_SNAPSHOT": {
+          const snap = evt.snapshot as { chatId?: string | null } | undefined;
+          if (snap?.chatId && !chatId) {
+            setChatId(snap.chatId);
+            setThreadId(snap.chatId);
+            if (typeof window !== "undefined") {
+              window.history.replaceState(null, "", `/chat?id=${snap.chatId}`);
+            }
+          }
+          break;
+        }
+        case "CUSTOM": {
+          if (evt.name === "crisis_detected") {
+            const value = evt.value as { messageId?: string } | undefined;
+            if (value?.messageId) crisisMessageIds.add(value.messageId);
+          }
+          break;
+        }
+        case "RUN_ERROR": {
+          const message = typeof evt.message === "string" ? evt.message : "Run failed";
+          setError(message);
+          break;
+        }
+        case "RUN_STARTED":
+        case "RUN_FINISHED":
+        default:
+          break;
+      }
+    };
+
     try {
       // Skip the WELCOME message when sending to API (it's UI-only).
       const payload = [...messages, userMsg]
         .filter((m) => m.id !== "welcome")
         .map(({ role, content }) => ({ role, content }));
+
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: payload, chatId }),
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({
+          threadId,
+          runId,
+          messages: payload,
+          state: { chatId },
+        }),
       });
-      const data = (await res.json()) as {
-        message?: string;
-        crisis?: boolean;
-        error?: string;
-        chatId?: string | null;
-      };
 
-      if (!res.ok) {
-        throw new Error(data.error ?? "Something went wrong");
-      }
-      const reply = data.message;
-      if (!reply) {
-        throw new Error("No reply from server");
+      if (!res.ok || !res.body) {
+        let detail = "Something went wrong";
+        try {
+          const data = (await res.json()) as { error?: string };
+          if (data.error) detail = data.error;
+        } catch {
+          // ignore — body wasn't JSON
+        }
+        throw new Error(detail);
       }
 
-      // If this was a new chat, the server created one — update local state and URL
-      if (!chatId && data.chatId) {
-        setChatId(data.chatId);
-        if (typeof window !== "undefined") {
-          window.history.replaceState(null, "", `/chat?id=${data.chatId}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let sepIdx: number;
+        while ((sepIdx = buffer.indexOf("\n\n")) !== -1) {
+          const frame = buffer.slice(0, sepIdx);
+          buffer = buffer.slice(sepIdx + 2);
+          for (const line of frame.split("\n")) {
+            if (!line.startsWith("data:")) continue;
+            const json = line.slice(5).trimStart();
+            if (!json) continue;
+            try {
+              handleEvent(JSON.parse(json));
+            } catch {
+              // ignore malformed event
+            }
+          }
         }
       }
-
-      setMessages((m) => [
-        ...m,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: reply,
-          crisis: Boolean(data.crisis),
-        },
-      ]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages, chatId]);
+  }, [input, loading, messages, chatId, threadId]);
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {

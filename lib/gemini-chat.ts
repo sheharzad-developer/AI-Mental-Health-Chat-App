@@ -65,6 +65,27 @@ export async function runGeminiChat(apiKey: string, modelName: string, messages:
   return text;
 }
 
+export async function* streamGeminiChat(
+  apiKey: string,
+  modelName: string,
+  messages: ChatMessage[],
+): AsyncGenerator<string> {
+  const { systemInstruction, history, lastUserText } = buildGeminiTurns(messages);
+
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: modelName, systemInstruction });
+  const chat = model.startChat({
+    history,
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+  });
+
+  const result = await chat.sendMessageStream(lastUserText);
+  for await (const chunk of result.stream) {
+    const t = chunk.text();
+    if (t) yield t;
+  }
+}
+
 /** Default first: higher free-tier daily limits than gemini-2.0-flash for many projects. */
 export const GEMINI_DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
@@ -112,6 +133,48 @@ export async function runGeminiChatWithFallback(apiKey: string, messages: ChatMe
         continue;
       }
       throw err;
+    }
+  }
+
+  throw new Error(
+    lastError?.message ??
+      "All Gemini models failed. Check quota at https://ai.google.dev/gemini-api/docs/rate-limits — you may need to wait, pick another model via GEMINI_MODEL, enable billing, or use OPENAI_API_KEY as fallback.",
+  );
+}
+
+/**
+ * Streaming variant of the fallback ladder. Falls back to the next model only
+ * if the failure happens before any token has been yielded — once we've started
+ * streaming to the client, mid-stream errors are propagated.
+ */
+export async function* streamGeminiChatWithFallback(
+  apiKey: string,
+  messages: ChatMessage[],
+): AsyncGenerator<string> {
+  const primary = process.env.GEMINI_MODEL?.trim() || GEMINI_DEFAULT_MODEL;
+  const fromEnv = (process.env.GEMINI_FALLBACK_MODELS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const ordered = [primary, ...fromEnv, ...DEFAULT_FALLBACK_MODELS];
+  const models = [...new Set(ordered)];
+
+  let lastError: Error | undefined;
+
+  for (const modelName of models) {
+    let yielded = false;
+    try {
+      for await (const chunk of streamGeminiChat(apiKey, modelName, messages)) {
+        yielded = true;
+        yield chunk;
+      }
+      if (yielded) return;
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      lastError = err;
+      if (yielded) throw err;
+      if (!isQuotaOrRateLimitError(err.message)) throw err;
     }
   }
 
