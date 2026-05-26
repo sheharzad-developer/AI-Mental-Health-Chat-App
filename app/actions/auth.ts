@@ -2,7 +2,12 @@
 
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
-import { createUser } from "@/lib/users";
+import {
+  DEMO_EMAIL,
+  DEMO_PASSWORD,
+  createUser,
+  ensureDemoUser,
+} from "@/lib/users";
 
 export async function signUpAction(_prev: unknown, formData: FormData) {
   const email = String(formData.get("email") ?? "").trim();
@@ -28,6 +33,38 @@ export async function signUpAction(_prev: unknown, formData: FormData) {
     redirect(`/?mode=signin&error=${encodeURIComponent("Account created — please sign in.")}`);
   }
   return { error: null };
+}
+
+export async function signInAsDemoAction() {
+  try {
+    await ensureDemoUser();
+  } catch (e) {
+    redirect(`/?mode=signin&error=${encodeURIComponent(toUiError(e, "Could not prepare demo account."))}`);
+  }
+
+  try {
+    await signIn("credentials", {
+      email: DEMO_EMAIL,
+      password: DEMO_PASSWORD,
+      redirectTo: "/chat",
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "NEXT_REDIRECT") throw e;
+    redirect(
+      `/?mode=signin&error=${encodeURIComponent(toUiError(e, "Could not sign in to demo account."))}`
+    );
+  }
+}
+
+// Bound the error message we put into the URL. ensureDemoUser already
+// sanitizes DB errors, but this is a final safety net so a future error
+// path can never leak a multi-kB payload into the query string.
+function toUiError(e: unknown, fallback: string): string {
+  const raw = e instanceof Error ? e.message : "";
+  if (!raw || raw === "NEXT_REDIRECT") return fallback;
+  const clean = raw.replace(/\s+/g, " ").trim();
+  if (clean.length > 160) return clean.slice(0, 160) + "…";
+  return clean;
 }
 
 export async function signInAction(_prev: unknown, formData: FormData) {

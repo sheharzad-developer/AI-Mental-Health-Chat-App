@@ -1,5 +1,8 @@
 import { signIn } from "@/auth";
 import { AuthForm } from "@/components/AuthForm";
+import { DemoLoginCard } from "@/components/DemoLoginCard";
+import { signInAsDemoAction } from "@/app/actions/auth";
+import { DEMO_EMAIL, DEMO_PASSWORD } from "@/lib/users";
 
 export default async function Home({
   searchParams,
@@ -193,6 +196,12 @@ export default async function Home({
             )}
 
             <AuthForm initialMode={initialMode} />
+
+            <DemoLoginCard
+              email={DEMO_EMAIL}
+              password={DEMO_PASSWORD}
+              action={signInAsDemoAction}
+            />
 
             <div className="my-5 flex items-center gap-3 text-[0.7rem] uppercase tracking-wider text-stone-400 dark:text-stone-500">
               <div className="h-px flex-1 bg-stone-200 dark:bg-stone-800" />
