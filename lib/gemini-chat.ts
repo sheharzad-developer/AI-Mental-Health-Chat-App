@@ -1,7 +1,14 @@
 import { GoogleGenerativeAI, type Content } from "@google/generative-ai";
+import { traceable } from "langsmith/traceable";
 import { WELLNESS_SYSTEM_PROMPT } from "@/lib/wellness-system-prompt";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+
+// LangSmith tracing is opt-in via env. When LANGSMITH_TRACING !== "true" or
+// LANGSMITH_API_KEY is unset, `traceable` becomes a thin pass-through and no
+// data leaves the process. When enabled, full user + assistant messages are
+// shipped to smith.langchain.com — make sure that's compatible with the
+// wellness app's privacy posture before turning it on in production.
 
 /**
  * Gemini chat history must start with a user turn. Leading assistant messages
@@ -43,7 +50,11 @@ function buildGeminiTurns(messages: ChatMessage[]): {
   };
 }
 
-export async function runGeminiChat(apiKey: string, modelName: string, messages: ChatMessage[]): Promise<string> {
+async function runGeminiChatInner(
+  apiKey: string,
+  modelName: string,
+  messages: ChatMessage[],
+): Promise<string> {
   const { systemInstruction, history, lastUserText } = buildGeminiTurns(messages);
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -65,7 +76,13 @@ export async function runGeminiChat(apiKey: string, modelName: string, messages:
   return text;
 }
 
-export async function* streamGeminiChat(
+export const runGeminiChat = traceable(runGeminiChatInner, {
+  name: "gemini.chat",
+  run_type: "llm",
+  processInputs: redactApiKey,
+}) as typeof runGeminiChatInner;
+
+async function* streamGeminiChatInner(
   apiKey: string,
   modelName: string,
   messages: ChatMessage[],
@@ -84,6 +101,24 @@ export async function* streamGeminiChat(
     const t = chunk.text();
     if (t) yield t;
   }
+}
+
+export const streamGeminiChat = traceable(streamGeminiChatInner, {
+  name: "gemini.stream",
+  run_type: "llm",
+  processInputs: redactApiKey,
+  aggregator: (chunks: string[]) => chunks.join(""),
+}) as typeof streamGeminiChatInner;
+
+// Strip the Gemini apiKey before LangSmith ships inputs to its servers.
+// The wrapped functions are called with positional args (apiKey, modelName,
+// messages), so LangSmith's default input shape is { args: [...] }.
+function redactApiKey(inputs: { args?: unknown[] } | Record<string, unknown>) {
+  if ("args" in inputs && Array.isArray(inputs.args)) {
+    const [, modelName, messages] = inputs.args as [unknown, string, ChatMessage[]];
+    return { modelName, messages };
+  }
+  return inputs as Record<string, unknown>;
 }
 
 /** Default first: higher free-tier daily limits than gemini-2.0-flash for many projects. */
